@@ -1,0 +1,49 @@
+<?php
+session_start();
+include "config.php";
+
+if(isset($_POST['login'])){
+
+$username = $_POST['username'];
+$password = $_POST['password'];
+
+$stmt = $conn->prepare("SELECT * FROM users WHERE username=?");
+$stmt->bind_param("s",$username);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if($result->num_rows > 0){
+
+$user = $result->fetch_assoc();
+
+if(password_verify($password,$user['password'])){
+
+// generate OTP
+$otp = rand(100000,999999);
+
+$_SESSION['otp'] = $otp;
+$_SESSION['user_id'] = $user['id'];
+
+
+// store OTP in database
+$stmt = $conn->prepare("UPDATE users SET otp=? WHERE id=?");
+$stmt->bind_param("si",$otp,$user['id']);
+$stmt->execute();
+
+
+// send OTP email
+mail($user['email'],"Your Login OTP","Your OTP is: ".$otp);
+
+header("Location: verify_otp.php");
+exit();
+
+}else{
+echo "Wrong password";
+}
+
+}else{
+echo "User not found";
+}
+
+}
+?>
